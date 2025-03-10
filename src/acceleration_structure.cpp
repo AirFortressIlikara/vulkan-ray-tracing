@@ -171,14 +171,26 @@ void Vk_Intersection_Accelerator::rebuild_top_level_accel(VkCommandBuffer comman
 
     vkCmdBuildAccelerationStructuresKHR(command_buffer, 1, &build_info, p_build_range_info);
 
-    VkMemoryBarrier barrier { VK_STRUCTURE_TYPE_MEMORY_BARRIER };
-    barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR /*| VK_ACCESS_SHADER_READ_BIT*/;
-    barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT;
+    VkMemoryBarrier2 barrier{ VK_STRUCTURE_TYPE_MEMORY_BARRIER_2 };
+    // Source stages/accesses correspond to AS build operation
+    // (reads/writes for AS backing buffer and reads for input geometry buffers)
+    barrier.srcStageMask = VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
 
-    vkCmdPipelineBarrier(command_buffer,
-        VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
-        VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
-        0, 1, &barrier, 0, nullptr, 0, nullptr);
+    barrier.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR
+                            | VK_ACCESS_SHADER_READ_BIT;
+    // Destination stage accesses corresponds to:
+    // - ray tracing shader (RAY_TRACING_SHADER + AS_READ|SHADER_READ)
+    // - AS rebuild on each frame (AS_BUILD+AS_WRITE|AS_READ|SHADER_READ)
+    barrier.dstStageMask = VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR
+                            | VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR;
+
+    barrier.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT
+                            | VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+
+    VkDependencyInfo dep_info{ VK_STRUCTURE_TYPE_DEPENDENCY_INFO };
+    dep_info.memoryBarrierCount = 1;
+    dep_info.pMemoryBarriers = &barrier;
+    vkCmdPipelineBarrier2(command_buffer, &dep_info);
 }
 
 void Vk_Intersection_Accelerator::destroy() {
