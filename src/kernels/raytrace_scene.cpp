@@ -4,6 +4,7 @@
 #include "lib.h"
 
 #include <cassert>
+#include <cstring>
 
 void Raytrace_Scene::create(const GPU_Mesh& gpu_mesh, VkImageView texture_view, VkSampler sampler) {
     descriptor_buffer_properties = VkPhysicalDeviceDescriptorBufferPropertiesEXT{

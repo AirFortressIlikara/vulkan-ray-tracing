@@ -1,6 +1,7 @@
 #include "draw_mesh.h"
 #include "gpu_mesh.h"
 #include "lib.h"
+#include <cstring>
 
 void Draw_Mesh::create(VkFormat color_attachment_format, VkFormat depth_attachment_format, VkImageView texture_view, VkSampler sampler) {
     uniform_buffer = vk_create_mapped_buffer(static_cast<VkDeviceSize>(sizeof(Matrix4x4)),
